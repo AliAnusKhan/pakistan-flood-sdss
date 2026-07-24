@@ -45,9 +45,9 @@ SEVERITY_STYLE = {
     "Unknown":  {"badge": "background:#E6E7E2; color:#4B5449; border:1px solid #CBCFC3;", "hex": "#6B756A"},
 }
 
-ACCENT_ENV = "#1B6E76"      # river teal  - flood & physical parameters
-ACCENT_ECO = "#B3872F"      # wheat       - agricultural & economic parameters
-ACCENT_NEUTRAL = "#5B6B62"  # slate ink   - statistical / neutral parameters
+ACCENT_ENV = "#1B6E76"      # river teal   - flood & physical parameters
+ACCENT_ECO = "#B3872F"      # wheat        - agricultural & economic parameters
+ACCENT_NEUTRAL = "#5B6B62"  # slate ink    - statistical / neutral parameters
 
 CHART_PALETTE = ["#1B6E76", "#B3872F", "#5C6B2F", "#A6431C", "#4C7A54", "#6E8FA3", "#8A5E17", "#3F5A34"]
 CHART_SEQUENTIAL_TEAL = ["#DCE9E6", "#5B9AA0", "#0E3B36"]
@@ -91,15 +91,30 @@ def friendly_error(raw_message: str) -> str:
 # ----------------------------------------------------------------------------
 # AI Advisory (LLM-generated recommendations) settings — powered by Groq
 # ----------------------------------------------------------------------------
-# Requires GROQ_API_KEY in .env. If it's missing, ai_insights.py degrades
-# gracefully - the AI Insights tab shows a "not configured" message instead
-# of crashing the rest of the dashboard, which works fully without it.
-#
-# Get a free key at: https://console.groq.com/keys
+# Safe resolution mechanism preventing KeyError crash on Streamlit Cloud
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-# llama-3.3-70b-versatile is Groq's current flagship free-tier model as of
-# writing; check https://console.groq.com/docs/models for the current list
-# if this one is ever retired.
+
+try:
+    import streamlit as st
+    if hasattr(st, "secrets"):
+        # 1. Direct root key lookup using .get()
+        if not GROQ_API_KEY:
+            GROQ_API_KEY = st.secrets.get("GROQ_API_KEY")
+
+        # 2. Check [ai_insights] section safely without raising KeyError
+        if not GROQ_API_KEY:
+            ai_sec = st.secrets.get("ai_insights")
+            if ai_sec and hasattr(ai_sec, "get"):
+                GROQ_API_KEY = ai_sec.get("groq_api_key") or ai_sec.get("api_key") or ai_sec.get("GROQ_API_KEY")
+
+        # 3. Check [groq] section safely
+        if not GROQ_API_KEY:
+            groq_sec = st.secrets.get("groq")
+            if groq_sec and hasattr(groq_sec, "get"):
+                GROQ_API_KEY = groq_sec.get("api_key") or groq_sec.get("groq_api_key") or groq_sec.get("GROQ_API_KEY")
+except Exception:
+    pass
+
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # ----------------------------------------------------------------------------
