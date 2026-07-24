@@ -37,25 +37,25 @@ DISTRICT_COORDS = {
 # ----------------------------------------------------------------------------
 # Design tokens
 # ----------------------------------------------------------------------------
-# Severity -> (badge css, solid hex accent used by charts/tiles/map markers)
 SEVERITY_STYLE = {
-    "Low":      {"badge": "background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;", "hex": "#16a34a"},
-    "Moderate": {"badge": "background:#fef9c3; color:#a16207; border:1px solid #fef08a;", "hex": "#ca8a04"},
-    "High":     {"badge": "background:#ffedd5; color:#c2410c; border:1px solid #fed7aa;", "hex": "#ea580c"},
-    "Extreme":  {"badge": "background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5;", "hex": "#dc2626"},
-    "Unknown":  {"badge": "background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;", "hex": "#64748b"},
+    "Low":      {"badge": "background:#E7EFE2; color:#3F5A34; border:1px solid #C3D4B4;", "hex": "#4C7A54"},
+    "Moderate": {"badge": "background:#F3E7CC; color:#8A5E17; border:1px solid #E3C88C;", "hex": "#B8792A"},
+    "High":     {"badge": "background:#F0DAC9; color:#8A3E17; border:1px solid #E0AE85;", "hex": "#A6431C"},
+    "Extreme":  {"badge": "background:#EBD1C9; color:#6B1F10; border:1px solid #D69C8B;", "hex": "#7A2418"},
+    "Unknown":  {"badge": "background:#E6E7E2; color:#4B5449; border:1px solid #CBCFC3;", "hex": "#6B756A"},
 }
 
-ACCENT_ENV = "#0ea5e9"   # sky blue  - environmental / physical parameters (flood side)
-ACCENT_ECO = "#16a34a"   # green     - economic / agricultural parameters (agriculture side)
-ACCENT_NEUTRAL = "#64748b"
+ACCENT_ENV = "#1B6E76"      # river teal  - flood & physical parameters
+ACCENT_ECO = "#B3872F"      # wheat       - agricultural & economic parameters
+ACCENT_NEUTRAL = "#5B6B62"  # slate ink   - statistical / neutral parameters
+
+CHART_PALETTE = ["#1B6E76", "#B3872F", "#5C6B2F", "#A6431C", "#4C7A54", "#6E8FA3", "#8A5E17", "#3F5A34"]
+CHART_SEQUENTIAL_TEAL = ["#DCE9E6", "#5B9AA0", "#0E3B36"]
+CHART_SEQUENTIAL_WHEAT = ["#F0E4C8", "#C99A3E", "#7A5A17"]
 
 # ----------------------------------------------------------------------------
 # Friendly translations for raw backend error/status strings
 # ----------------------------------------------------------------------------
-# Maps a substring found in a raw error/status message to a plain-language,
-# non-technical explanation shown to the end user instead of the raw
-# Python/GEE exception text.
 FRIENDLY_ERROR_MAP = {
     "not found in GAUL boundary collection": (
         "We couldn't match that district name to a known administrative boundary. "
@@ -81,9 +81,6 @@ FRIENDLY_ERROR_MAP = {
 
 
 def friendly_error(raw_message: str) -> str:
-    """Translate a raw backend error/status string into a plain-language
-    message for end users, falling back to the original text if no known
-    pattern matches."""
     if not raw_message:
         return "An unknown error occurred while extracting satellite data."
     for pattern, friendly in FRIENDLY_ERROR_MAP.items():
@@ -92,18 +89,18 @@ def friendly_error(raw_message: str) -> str:
     return raw_message
 
 # ----------------------------------------------------------------------------
-# AI Advisory (LLM-generated recommendations) settings
+# AI Advisory (LLM-generated recommendations) settings — powered by Groq
 # ----------------------------------------------------------------------------
-# Requires GEMINI_API_KEY in .env. If it's missing, ai_insights.py degrades
+# Requires GROQ_API_KEY in .env. If it's missing, ai_insights.py degrades
 # gracefully - the AI Insights tab shows a "not configured" message instead
 # of crashing the rest of the dashboard, which works fully without it.
 #
-# Get a free key (no credit card needed) at: https://aistudio.google.com/apikey
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# gemini-2.0-flash is on Google's free tier as of writing; check
-# https://ai.google.dev/gemini-api/docs/models for the current free-tier model
-# if this one is no longer available when you deploy.
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+# Get a free key at: https://console.groq.com/keys
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# llama-3.3-70b-versatile is Groq's current flagship free-tier model as of
+# writing; check https://console.groq.com/docs/models for the current list
+# if this one is ever retired.
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # ----------------------------------------------------------------------------
 # Data source registry - single source of truth shown in BOTH the UI and the

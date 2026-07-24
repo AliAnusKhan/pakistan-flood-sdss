@@ -39,7 +39,7 @@ from config import (
     ACCENT_ECO,
     ACCENT_NEUTRAL,
     DATA_SOURCES,
-    GEMINI_MODEL,
+    GROQ_MODEL,
     friendly_error,
 )
 
@@ -47,27 +47,52 @@ from config import (
 # Page Config
 # ----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Pakistan Agricultural Flood SDSS",
+    page_title="Sailaab — Agricultural Flood SDSS",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ----------------------------------------------------------------------------
-# Executive SaaS UI CSS (refined light theme)
+# Design tokens & CSS
 # ----------------------------------------------------------------------------
 EXECUTIVE_SAAS_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+:root {
+    --ink: #16211E;
+    --ink-soft: #4B564E;
+    --paper: #F5F6F0;
+    --card: #FFFFFF;
+    --line: #DBDFD1;
+    --teal-deep: #0E3B36;
+    --teal: #1B6E76;
+    --teal-tint: #E4EDEA;
+    --wheat: #B3872F;
+    --wheat-tint: #F3E7CC;
+    --olive: #5C6B2F;
+    --rust: #A6431C;
+    --rust-tint: #F0DAC9;
+    --brick: #7A2418;
+    --sage: #4C7A54;
+    --sage-tint: #E7EFE2;
+}
 
 html {
     scrollbar-gutter: stable;
     overflow-x: hidden;
 }
 html, body, [data-testid="stAppViewContainer"] {
-    background-color: #f7f9fc !important;
+    background-color: var(--paper) !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    color: #0f172a;
+    color: var(--ink);
+}
+h1, h2, h3, h4, h5, .kpi-label, .section-label, .sidebar-step, .step-num {
+    font-family: 'Space Grotesk', 'Inter', sans-serif !important;
+}
+.kpi-value, .hero-pill b, code, .cmp-table td.num, .breadcrumb {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
 }
 #MainMenu, footer {visibility: hidden;}
 .block-container {
@@ -76,11 +101,6 @@ html, body, [data-testid="stAppViewContainer"] {
     max-width: 1440px;
 }
 
-/* ---------- Anti-jitter fixes ----------
-   Prevents the whole page from nudging/shaking when the cursor moves over
-   hover-animated cards/buttons or when the mouse wheel is scrolled. The
-   cause was hover transforms + shadows repainting near the scrollbar edge
-   and the scrollbar itself appearing/disappearing as content height changed. */
 [data-testid="stAppViewContainer"], [data-testid="stMain"], [data-testid="stSidebar"] {
     overflow-anchor: none;
 }
@@ -92,317 +112,316 @@ html, body, [data-testid="stAppViewContainer"] {
 }
 iframe { display: block; }
 
-/* ---------- Header ---------- */
+.contour-rule {
+    height: 7px;
+    width: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='10'%3E%3Cpath d='M0 5 Q10 0 20 5 T40 5' stroke='%231B6E76' stroke-width='1.6' fill='none' opacity='0.55'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-size: 40px 10px;
+    margin: 4px 0 20px 0;
+}
+
 .executive-header {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e6eaf0;
-    border-radius: 18px;
-    padding: 22px 26px;
-    margin-bottom: 18px;
-    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+    background: linear-gradient(120deg, var(--teal-deep) 0%, #123F3A 55%, #1B4B44 100%);
+    border: none;
+    border-radius: 4px;
+    padding: 24px 28px 20px 28px;
+    margin-bottom: 0;
+    box-shadow: 0 6px 16px -6px rgba(14, 59, 54, 0.35);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 .executive-header h1 {
     font-size: 1.5rem !important;
-    font-weight: 800 !important;
-    color: #0f172a !important;
+    font-weight: 700 !important;
+    color: #F5F6F0 !important;
     margin: 0 !important;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
 }
 .executive-header p {
     font-size: 0.86rem !important;
-    color: #64748b !important;
+    color: #BFD3CE !important;
     margin: 4px 0 0 0 !important;
 }
 .live-chip {
     display: inline-flex; align-items: center; gap: 6px;
-    background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
-    padding: 6px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 600;
+    background: rgba(245,246,240,0.1); color: #E7EFE2; border: 1px solid rgba(245,246,240,0.25);
+    padding: 6px 12px; border-radius: 3px; font-size: 0.76rem; font-weight: 600;
     white-space: nowrap;
 }
 .live-dot {
-    width: 7px; height: 7px; border-radius: 50%; background: #10b981;
-    box-shadow: 0 0 0 3px rgba(16,185,129,0.18);
+    width: 7px; height: 7px; border-radius: 50%; background: #8FCB9B;
+    box-shadow: 0 0 0 3px rgba(143,203,155,0.22);
 }
 
-/* ---------- Generic card wrapper ---------- */
 .ui-card {
-    background: #ffffff;
-    border: 1px solid #e6eaf0;
-    border-radius: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 2px solid var(--teal-deep);
+    border-radius: 4px;
     padding: 20px;
-    box-shadow: 0 4px 6px -1px rgba(15,23,42,0.03), 0 2px 4px -2px rgba(15,23,42,0.02);
+    box-shadow: 0 2px 5px -2px rgba(22,33,30,0.06);
     margin-bottom: 18px;
 }
-.ui-card h4, .ui-card h5 { margin-top: 0 !important; }
+.ui-card h4, .ui-card h5 { margin-top: 0 !important; font-family: 'Space Grotesk', sans-serif; }
 
-/* ---------- Section labels ---------- */
 .section-label {
     font-size: 0.74rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #94a3b8;
+    letter-spacing: 0.07em;
+    color: var(--ink-soft);
     margin: 4px 0 10px 2px;
     display: flex; align-items: center; gap: 6px;
 }
 
-/* ---------- KPI tiles (custom, replaces bare st.metric look) ---------- */
 .kpi-tile {
-    background: #ffffff;
-    border: 1px solid #e6eaf0;
-    border-top: 3px solid var(--accent, #0ea5e9);
-    border-radius: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent, #1B6E76);
+    border-top: none;
+    border-radius: 3px;
     padding: 14px 16px 12px 16px;
-    box-shadow: 0 2px 4px rgba(15,23,42,0.03);
+    box-shadow: 0 1px 3px rgba(22,33,30,0.04);
     min-height: 104px;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .kpi-tile:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(15,23,42,0.06);
+    box-shadow: 0 8px 16px rgba(22,33,30,0.08);
 }
-.kpi-icon { font-size: 1.15rem; opacity: 0.9; margin-bottom: 4px; }
+.kpi-icon { font-size: 1.1rem; opacity: 0.85; margin-bottom: 4px; }
 .kpi-label {
-    font-size: 0.72rem; font-weight: 700; color: #64748b;
-    text-transform: uppercase; letter-spacing: 0.03em;
+    font-size: 0.71rem; font-weight: 600; color: var(--ink-soft);
+    text-transform: uppercase; letter-spacing: 0.04em;
 }
 .kpi-value {
-    font-size: 1.42rem; font-weight: 800; color: #0f172a;
-    margin-top: 3px; letter-spacing: -0.01em;
+    font-size: 1.36rem; font-weight: 700; color: var(--ink);
+    margin-top: 4px; letter-spacing: -0.01em;
 }
-.kpi-sub { font-size: 0.72rem; color: #94a3b8; margin-top: 3px; }
+.kpi-sub { font-size: 0.71rem; color: #7C8A80; margin-top: 3px; font-family: 'Inter', sans-serif; }
 
-/* ---------- Insight callouts ---------- */
 .insight-callout {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-left: 4px solid #2563eb;
-    border-radius: 10px;
+    background: var(--teal-tint);
+    border: 1px solid #C7D9D6;
+    border-left: 4px solid var(--teal);
+    border-radius: 3px;
     padding: 12px 16px;
     font-size: 0.86rem;
-    color: #1e3a5f;
+    color: #123F3A;
     margin: 6px 0 4px 0;
 }
-.insight-callout b { color: #1d4ed8; }
-.insight-callout.warn { background:#fff7ed; border-color:#fed7aa; border-left-color:#ea580c; color:#7c2d12; }
-.insight-callout.warn b { color:#c2410c; }
-.insight-callout.good { background:#f0fdf4; border-color:#bbf7d0; border-left-color:#16a34a; color:#14532d; }
-.insight-callout.good b { color:#15803d; }
+.insight-callout b { color: var(--teal-deep); }
+.insight-callout.warn { background: var(--rust-tint); border-color: #E0AE85; border-left-color: var(--rust); color: #5A2510; }
+.insight-callout.warn b { color: var(--rust); }
+.insight-callout.good { background: var(--sage-tint); border-color: #C3D4B4; border-left-color: var(--sage); color: #2F4A34; }
+.insight-callout.good b { color: var(--sage); }
 
-/* ---------- Confidence / data-quality badges ---------- */
 .confidence-card {
     display: flex; align-items: center; gap: 14px;
-    background: #ffffff; border: 1px solid #e6eaf0; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 4px;
     padding: 14px 18px;
 }
 .confidence-pill {
-    padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
-    white-space: nowrap;
+    padding: 4px 12px; border-radius: 3px; font-size: 0.78rem; font-weight: 700;
+    white-space: nowrap; font-family: 'IBM Plex Mono', monospace;
 }
 
-/* ---------- Tabs ---------- */
 [data-testid="stTabs"] [data-baseweb="tab-list"] {
-    gap: 8px; background-color: #eef1f6; padding: 6px;
-    border-radius: 12px; border: 1px solid #e6eaf0;
+    gap: 4px; background-color: #EAEBE3; padding: 5px;
+    border-radius: 4px; border: 1px solid var(--line);
 }
 [data-testid="stTabs"] [data-baseweb="tab"] {
-    height: 42px; border-radius: 9px; background-color: transparent;
-    border: none !important; color: #64748b !important; font-weight: 500;
-    font-size: 0.89rem; padding: 0 18px;
+    height: 42px; border-radius: 3px; background-color: transparent;
+    border: none !important; color: var(--ink-soft) !important; font-weight: 500;
+    font-size: 0.88rem; padding: 0 18px; font-family: 'Space Grotesk', sans-serif;
 }
 [data-testid="stTabs"] [aria-selected="true"] {
-    background: linear-gradient(90deg, #ffffff, #ffffff) padding-box,
-                linear-gradient(90deg, #2563eb, #16a34a) border-box !important;
-    border: 1.5px solid transparent !important;
-    color: #0f172a !important;
-    font-weight: 700 !important; box-shadow: 0 2px 5px rgba(15,23,42,0.06) !important;
+    background: var(--teal-deep) !important;
+    border: none !important;
+    color: #F5F6F0 !important;
+    font-weight: 600 !important; box-shadow: 0 2px 5px rgba(14,59,54,0.18) !important;
 }
 
-/* ---------- Sidebar ---------- */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%) !important;
-    border-right: 1px solid #e6eaf0 !important;
+    background: #FBFBF8 !important;
+    border-right: 1px solid var(--line) !important;
 }
 [data-testid="stSidebar"] h3 {
-    background: linear-gradient(90deg, #2563eb, #16a34a);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    font-weight: 800 !important;
+    color: var(--teal-deep) !important;
+    font-weight: 700 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
 }
 .dss-brand {
-    text-align: center; font-size: 0.78rem; color: #94a3b8;
-    padding-top: 14px; border-top: 1px solid #e6eaf0; margin-top: 20px;
+    text-align: center; font-size: 0.76rem; color: #8A9389;
+    padding-top: 14px; border-top: 1px solid var(--line); margin-top: 20px;
+    font-family: 'IBM Plex Mono', monospace;
 }
 .sidebar-step {
-    font-size: 0.72rem; font-weight: 800; color: #ffffff;
+    font-size: 0.71rem; font-weight: 700; color: #F5F6F0;
     text-transform: uppercase; letter-spacing: 0.05em; margin: 16px 0 8px 0;
-    display: inline-block; padding: 4px 12px; border-radius: 8px;
-    background: linear-gradient(90deg, #2563eb, #16a34a);
+    display: inline-block; padding: 4px 12px; border-radius: 3px;
+    background: var(--teal-deep);
 }
 
-/* ---------- Colorful form controls (sidebar selects, sliders, inputs) ---------- */
 [data-testid="stSidebar"] [data-baseweb="select"] > div {
-    border-radius: 10px !important;
-    border: 1.5px solid #dbe3ee !important;
+    border-radius: 3px !important;
+    border: 1.5px solid var(--line) !important;
     background-color: #ffffff !important;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 [data-testid="stSidebar"] [data-baseweb="select"] > div:hover {
-    border-color: #16a34a !important;
-    box-shadow: 0 0 0 3px rgba(22,163,74,0.12) !important;
+    border-color: var(--wheat) !important;
+    box-shadow: 0 0 0 3px rgba(179,135,47,0.12) !important;
 }
 [data-testid="stSidebar"] [data-baseweb="select"] > div:focus-within {
-    border-color: #2563eb !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.16) !important;
+    border-color: var(--teal) !important;
+    box-shadow: 0 0 0 3px rgba(27,110,118,0.16) !important;
 }
 [data-testid="stSidebar"] [data-testid="stDateInput"] input,
 [data-testid="stSidebar"] input[type="text"] {
-    border-radius: 10px !important;
-    border: 1.5px solid #dbe3ee !important;
+    border-radius: 3px !important;
+    border: 1.5px solid var(--line) !important;
 }
 [data-testid="stSidebar"] [data-testid="stSlider"] [role="slider"] {
-    background-color: #16a34a !important;
-    box-shadow: 0 0 0 4px rgba(22,163,74,0.18) !important;
+    background-color: var(--teal) !important;
+    box-shadow: 0 0 0 4px rgba(27,110,118,0.18) !important;
 }
 [data-testid="stSidebar"] [data-testid="stSlider"] > div > div > div {
-    background: linear-gradient(90deg, #2563eb, #16a34a) !important;
+    background: var(--teal) !important;
 }
 
-/* ---------- Colorful buttons ---------- */
-/* Primary action button — Run Satellite Analysis (solid gradient, glow) */
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"] {
-    background: linear-gradient(90deg, #2563eb 0%, #16a34a 100%) !important;
+    background: var(--teal-deep) !important;
     border: none !important;
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    border-radius: 12px !important;
+    color: #F5F6F0 !important;
+    font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    border-radius: 3px !important;
     padding: 0.6rem 1rem !important;
-    box-shadow: 0 4px 12px rgba(22,120,90,0.28) !important;
+    box-shadow: 0 3px 8px rgba(14,59,54,0.28) !important;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="primary"]:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(22,120,90,0.36) !important;
+    background: #123F3A !important;
+    box-shadow: 0 5px 12px rgba(14,59,54,0.34) !important;
 }
-/* Secondary action button — Reset Filters (colored outline, not flat grey) */
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"] {
-    background: #fff7ed !important;
-    border: 1.5px solid #fdba74 !important;
-    color: #c2410c !important;
-    font-weight: 700 !important;
-    border-radius: 12px !important;
+    background: var(--rust-tint) !important;
+    border: 1.5px solid #E0AE85 !important;
+    color: var(--rust) !important;
+    font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    border-radius: 3px !important;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 [data-testid="stSidebar"] [data-testid="stButton"] button[kind="secondary"]:hover {
-    background: #ffedd5 !important;
-    border-color: #f97316 !important;
+    background: #E8C4A9 !important;
+    border-color: var(--rust) !important;
     transform: translateY(-1px);
 }
-/* Back to Overview button (main panel) — teal outline, distinct from sidebar actions */
 .actionbar-back-marker + div [data-testid="stButton"] button {
-    background: #ecfeff !important;
-    border: 1.5px solid #67e8f9 !important;
-    color: #0e7490 !important;
-    font-weight: 700 !important;
-    border-radius: 12px !important;
+    background: var(--teal-tint) !important;
+    border: 1.5px solid #A9C6C2 !important;
+    color: var(--teal-deep) !important;
+    font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    border-radius: 3px !important;
     transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .actionbar-back-marker + div [data-testid="stButton"] button:hover {
-    background: #cffafe !important;
-    border-color: #22d3ee !important;
+    background: #CFE1DE !important;
+    border-color: var(--teal) !important;
     transform: translateY(-1px);
 }
 [data-testid="stDownloadButton"] button {
-    background: linear-gradient(90deg, #16a34a 0%, #0ea5e9 100%) !important;
-    border: none !important; color: #ffffff !important; font-weight: 700 !important;
-    border-radius: 12px !important; box-shadow: 0 4px 12px rgba(16,163,74,0.24) !important;
+    background: var(--wheat) !important;
+    border: none !important; color: #2A1F09 !important; font-weight: 600 !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    border-radius: 3px !important; box-shadow: 0 3px 8px rgba(179,135,47,0.28) !important;
 }
 
-/* ---------- Severity banner ---------- */
 .severity-badge {
-    display: inline-block; padding: 7px 16px; border-radius: 20px;
-    font-size: 0.84rem; font-weight: 700; margin-bottom: 14px;
+    display: inline-block; padding: 7px 16px; border-radius: 3px;
+    font-size: 0.83rem; font-weight: 700; margin-bottom: 14px;
+    font-family: 'IBM Plex Mono', monospace;
 }
 .dq-warning {
-    background: #fffbeb; border: 1px solid #fde68a; color: #b45309;
-    padding: 10px 14px; border-radius: 10px; font-size: 0.84rem; margin-bottom: 16px;
+    background: var(--wheat-tint); border: 1px solid #E3C88C; color: #6E4C13;
+    padding: 10px 14px; border-radius: 3px; font-size: 0.84rem; margin-bottom: 16px;
 }
 
-/* ---------- Hero summary strip ---------- */
 .hero-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
 .hero-pill {
-    background: #f8fafc; border: 1px solid #e6eaf0; border-radius: 12px;
-    padding: 8px 14px; font-size: 0.8rem; color: #334155;
+    background: #EFF0E9; border: 1px solid var(--line); border-radius: 3px;
+    padding: 8px 14px; font-size: 0.8rem; color: var(--ink-soft);
 }
-.hero-pill b { color: #0f172a; }
+.hero-pill b { color: var(--ink); }
 
-/* ---------- Comparison table ---------- */
 .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
 .cmp-table th {
-    text-align: left; padding: 10px 12px; background: #f8fafc;
-    color: #64748b; font-weight: 700; font-size: 0.74rem;
+    text-align: left; padding: 10px 12px; background: #EFF0E9;
+    color: var(--ink-soft); font-weight: 700; font-size: 0.73rem;
     text-transform: uppercase; letter-spacing: 0.04em;
-    border-bottom: 1px solid #e6eaf0;
+    border-bottom: 1px solid var(--line);
+    font-family: 'Space Grotesk', sans-serif;
 }
 .cmp-table td {
-    padding: 9px 12px; border-bottom: 1px solid #eef1f6; color: #334155;
+    padding: 9px 12px; border-bottom: 1px solid #EDEEE7; color: var(--ink-soft);
 }
 .cmp-table tr:last-child td { border-bottom: none; }
-.cmp-winner { font-weight: 700; color: #0f172a; background: #eff6ff; border-radius: 6px; }
+.cmp-winner { font-weight: 700; color: var(--ink); background: var(--teal-tint); border-radius: 2px; }
 
-/* ---------- Map legend ---------- */
-.map-legend-row { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:#334155; margin-bottom:4px;}
-.map-legend-swatch { width:12px; height:12px; border-radius:3px; display:inline-block; }
+.map-legend-row { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--ink-soft); margin-bottom:4px;}
+.map-legend-swatch { width:12px; height:12px; border-radius:2px; display:inline-block; }
 
-/* ---------- Breadcrumb / action bar ---------- */
 .action-bar {
     display: flex; align-items: center; justify-content: space-between;
-    background: #ffffff; border: 1px solid #e6eaf0; border-radius: 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 4px;
     padding: 10px 18px; margin-bottom: 18px;
-    box-shadow: 0 2px 4px rgba(15,23,42,0.02);
+    box-shadow: 0 1px 3px rgba(22,33,30,0.03);
 }
-.breadcrumb { display:flex; align-items:center; gap:6px; font-size:0.86rem; color:#64748b; flex-wrap:wrap; }
-.breadcrumb .crumb { color:#64748b; }
-.breadcrumb .crumb.active { color:#0f172a; font-weight:700; }
-.breadcrumb .sep { color:#cbd5e1; }
+.breadcrumb { display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--ink-soft); flex-wrap:wrap; }
+.breadcrumb .crumb { color:var(--ink-soft); }
+.breadcrumb .crumb.active { color:var(--teal-deep); font-weight:700; }
+.breadcrumb .sep { color:#B7BDAF; }
 
-/* ---------- Landing / empty state ---------- */
 .landing-hero {
-    background: linear-gradient(135deg, #eff6ff 0%, #f7f9fc 60%, #ffffff 100%);
-    border: 1px solid #dbeafe; border-radius: 20px;
+    background: linear-gradient(145deg, var(--teal-tint) 0%, var(--paper) 65%, #ffffff 100%);
+    border: 1px solid #C7D9D6; border-radius: 4px;
     padding: 40px 40px 34px 40px; margin-bottom: 20px; text-align: center;
 }
 .landing-hero h2 {
-    font-size: 1.55rem; font-weight: 800; color: #0f172a; margin: 10px 0 8px 0;
+    font-size: 1.5rem; font-weight: 700; color: var(--teal-deep); margin: 10px 0 8px 0;
+    font-family: 'Space Grotesk', sans-serif;
 }
-.landing-hero p { font-size: 0.94rem; color: #475569; max-width: 620px; margin: 0 auto; line-height:1.55; }
+.landing-hero p { font-size: 0.94rem; color: var(--ink-soft); max-width: 620px; margin: 0 auto; line-height:1.55; }
 .landing-icon { font-size: 2.4rem; }
 
 .step-row { display:flex; gap:16px; margin-top: 26px; flex-wrap: wrap; justify-content:center; }
 .step-card {
-    flex: 1 1 220px; max-width: 260px; background:#ffffff; border:1px solid #e6eaf0;
-    border-radius:14px; padding:18px 16px; text-align:left;
-    box-shadow: 0 2px 4px rgba(15,23,42,0.03);
+    flex: 1 1 220px; max-width: 260px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 4px; padding: 18px 16px; text-align: left;
+    box-shadow: 0 1px 3px rgba(22,33,30,0.04);
 }
 .step-num {
-    width:28px; height:28px; border-radius:50%; background:#2563eb; color:#fff;
+    width:28px; height:28px; border-radius:3px; background: var(--teal-deep); color:#F5F6F0;
     display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; margin-bottom:10px;
 }
-.step-card h5 { margin:0 0 4px 0; font-size:0.92rem; color:#0f172a; }
-.step-card p { margin:0; font-size:0.8rem; color:#64748b; line-height:1.45; }
+.step-card h5 { margin:0 0 4px 0; font-size:0.92rem; color:var(--ink); font-family: 'Space Grotesk', sans-serif; }
+.step-card p { margin:0; font-size:0.8rem; color:var(--ink-soft); line-height:1.45; }
 
-.skeleton-label { font-size:0.74rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#cbd5e1; margin: 22px 0 10px 2px; }
+.skeleton-label { font-size:0.74rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:#B7BDAF; margin: 22px 0 10px 2px; }
 .skeleton-tile {
-    background: #f1f5f9; border: 1px dashed #e2e8f0; border-radius: 14px;
+    background: #EFF0E9; border: 1px dashed var(--line); border-radius: 4px;
     min-height: 90px; padding: 14px 16px;
 }
-.skeleton-bar { height:10px; border-radius:6px; background:#e2e8f0; margin-bottom:8px; }
+.skeleton-bar { height:10px; border-radius:2px; background:#DEE1D5; margin-bottom:8px; }
 .skeleton-bar.short { width:55%; }
-.skeleton-bar.value { height:16px; width:70%; background:#dbe3ee; }
+.skeleton-bar.value { height:16px; width:70%; background:#D2D6C6; }
 
-/* ---------- Responsive breakpoints (tablet / mobile) ---------- */
 @media (max-width: 900px) {
     .block-container { padding-left: 0.8rem !important; padding-right: 0.8rem !important; }
     .executive-header { flex-direction: column; align-items: flex-start; gap: 10px; }
@@ -428,38 +447,17 @@ st.markdown(EXECUTIVE_SAAS_CSS, unsafe_allow_html=True)
 # Cached backend calls (UNCHANGED logic — presentation layer only)
 # ----------------------------------------------------------------------------
 @st.cache_resource(show_spinner="Connecting to Google Earth Engine...")
-def load_gee() -> bool:
+def load_gee() -> tuple:
     return init_gee()
 
 
 @st.cache_data(show_spinner=False, persist="disk")
 def cached_parameters(district: str, start_date: str, end_date: str):
-    """Cached wrapper around the GEE extraction pipeline.
-
-    persist="disk" means results survive an app restart, so re-running the
-    same district/date combo later (or after redeploying) doesn't re-spend
-    GEE quota or API calls.
-
-    IMPORTANT: this function must NOT touch any Streamlit UI element,
-    directly or via a callback. st.cache_data records every Streamlit
-    element created during a cache MISS and "replays" those exact calls on
-    a later cache HIT - if a callback here updates a progress bar/placeholder
-    that was created outside this function, replay fails with
-    CacheReplayClosureError because that placeholder no longer exists at
-    replay time. Progress feedback is handled purely with a plain
-    st.spinner() around the call site instead (see the Overview tab).
-    """
     return get_district_10_parameters(district, start_date, end_date)
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def cached_ai_recommendations(cache_key: str, data: dict):
-    """
-    Cached wrapper around the LLM call - keyed on a stable string (district +
-    date range + damage%) rather than the raw dict, so identical results don't
-    trigger a fresh (paid) API call. Contains no Streamlit UI calls, so it's
-    safe to cache (see the CacheReplayClosureError note above).
-    """
     return generate_ai_recommendations(data)
 
 
@@ -489,16 +487,13 @@ def resolve_date_range(analysis_type: str, date_meta: dict) -> tuple:
     return f"{y}-07-15", f"{y}-09-30"
 
 
-gee_ready = load_gee()
+# ----------------------------------------------------------------------------
+# GEE connection check — now shows the EXACT reason on failure
+# ----------------------------------------------------------------------------
+gee_ready, gee_detail = load_gee()
 if not gee_ready:
-    st.error(
-        "Could not connect to Google Earth Engine. Check GEE_PROJECT_ID and "
-        "your service-account credentials, then reload the app."
-    )
+    st.error(f"⚠️ Could not connect to Google Earth Engine.\n\n**Reason:** {gee_detail}")
     st.stop()
-
-# NOTE: PROVINCE_DISTRICT_MAP, DISTRICT_COORDS, and CURRENT_YEAR now live in
-# config.py — imported at the top of this file, edit them there.
 
 # ----------------------------------------------------------------------------
 # Small presentation helpers
@@ -529,14 +524,12 @@ def kpi_tile_html(icon: str, label: str, value: str, accent: str, sub: str = Non
 
 
 def render_kpi_row(columns, tiles):
-    """tiles: list of (icon, label, value, accent, sub) matching len(columns)."""
     for col, (icon, label, value, accent, sub) in zip(columns, tiles):
         with col:
             st.markdown(kpi_tile_html(icon, label, value, accent, sub), unsafe_allow_html=True)
 
 
 def interpret_zscore(z):
-    """Plain-language read of the CHIRPS rainfall Z-score vs. the 2000-2020 baseline."""
     if z is None:
         return "No 20-year satellite baseline available for comparison.", "neutral"
     if z >= 2:
@@ -551,14 +544,13 @@ def interpret_zscore(z):
 
 
 def confidence_from_method(method: str):
-    """Maps the flood-detection method returned by gee_engine to a confidence tier."""
     if not method or method == "Unavailable":
-        return "Low Confidence", "#fee2e2", "#b91c1c", "#fca5a5"
+        return "Low Confidence", "#EBD1C9", "#7A2418", "#D69C8B"
     if "Sentinel-1" in method:
-        return "High Confidence", "#dcfce7", "#15803d", "#bbf7d0"
+        return "High Confidence", "#E7EFE2", "#3F5A34", "#C3D4B4"
     if "MODIS" in method:
-        return "Moderate Confidence", "#fef9c3", "#a16207", "#fef08a"
-    return "Moderate Confidence", "#fef9c3", "#a16207", "#fef08a"
+        return "Moderate Confidence", "#F3E7CC", "#8A5E17", "#E3C88C"
+    return "Moderate Confidence", "#F3E7CC", "#8A5E17", "#E3C88C"
 
 
 def insight_box(html: str, kind: str = ""):
@@ -567,7 +559,6 @@ def insight_box(html: str, kind: str = ""):
 
 
 def _chart_to_png_bytes(fig) -> io.BytesIO:
-    """Render a matplotlib figure to an in-memory PNG for embedding in the PDF."""
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=170, bbox_inches="tight")
     plt.close(fig)
@@ -576,7 +567,6 @@ def _chart_to_png_bytes(fig) -> io.BytesIO:
 
 
 def _pdf_commodity_bar_chart(commodity_breakdown: list) -> io.BytesIO:
-    """Horizontal bar chart of financial loss by commodity, green/blue themed."""
     names = [r["Commodity"] for r in commodity_breakdown]
     values = [r["Financial Loss ($ USD)"] for r in commodity_breakdown]
     order = sorted(range(len(values)), key=lambda i: values[i])
@@ -584,24 +574,23 @@ def _pdf_commodity_bar_chart(commodity_breakdown: list) -> io.BytesIO:
     values = [values[i] for i in order]
 
     fig, ax = plt.subplots(figsize=(6.4, 3.2))
-    bars = ax.barh(names, values, color="#16a34a")
+    bars = ax.barh(names, values, color="#B3872F")
     ax.set_xlabel("Financial Loss ($ USD)", fontsize=9)
-    ax.set_title("Financial Loss by Commodity", fontsize=11, fontweight="bold", color="#0f172a")
+    ax.set_title("Financial Loss by Commodity", fontsize=11, fontweight="bold", color="#16211E")
     ax.tick_params(labelsize=8)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
     for bar, val in zip(bars, values):
         ax.text(bar.get_width(), bar.get_y() + bar.get_height() / 2, f" ${val:,.0f}",
-                va="center", fontsize=7.5, color="#0f172a")
+                va="center", fontsize=7.5, color="#16211E")
     fig.tight_layout()
     return _chart_to_png_bytes(fig)
 
 
 def _pdf_commodity_pie_chart(commodity_breakdown: list) -> io.BytesIO:
-    """Pie chart of each commodity's share of total financial loss, blue/green palette."""
     names = [r["Commodity"] for r in commodity_breakdown]
     values = [r["Financial Loss ($ USD)"] for r in commodity_breakdown]
-    palette = ["#0ea5e9", "#16a34a", "#0284c7", "#22c55e", "#0369a1", "#15803d"]
+    palette = ["#1B6E76", "#B3872F", "#5C6B2F", "#A6431C", "#6E8FA3", "#8A5E17"]
 
     fig, ax = plt.subplots(figsize=(4.6, 3.2))
     if sum(values) > 0:
@@ -609,36 +598,29 @@ def _pdf_commodity_pie_chart(commodity_breakdown: list) -> io.BytesIO:
             values, labels=names, autopct="%1.0f%%", startangle=90,
             colors=palette[: len(values)], textprops={"fontsize": 7},
         )
-    ax.set_title("Loss Share by Commodity", fontsize=11, fontweight="bold", color="#0f172a")
+    ax.set_title("Loss Share by Commodity", fontsize=11, fontweight="bold", color="#16211E")
     fig.tight_layout()
     return _chart_to_png_bytes(fig)
 
 
 def _pdf_location_map(district_name: str, coords: dict) -> io.BytesIO:
-    """
-    Schematic location map: plots every tracked district as a small dot and
-    highlights the report's district in red, with lat/lon gridlines. This is
-    intentionally a lightweight coordinate plot (no tile-server dependency),
-    since a real basemap screenshot would require a headless-Chrome/Selenium
-    stack that most Streamlit deployment targets don't provide reliably.
-    """
     fig, ax = plt.subplots(figsize=(5.2, 4.4))
     for name, (lat, lon) in coords.items():
         if name == "All Pakistan":
             continue
         if name == district_name:
             continue
-        ax.scatter(lon, lat, s=22, color="#0ea5e9", alpha=0.55, zorder=2)
-        ax.annotate(name, (lon, lat), fontsize=6, color="#334155", xytext=(3, 3), textcoords="offset points")
+        ax.scatter(lon, lat, s=22, color="#1B6E76", alpha=0.55, zorder=2)
+        ax.annotate(name, (lon, lat), fontsize=6, color="#4B564E", xytext=(3, 3), textcoords="offset points")
 
     if district_name in coords:
         lat, lon = coords[district_name]
-        ax.scatter(lon, lat, s=130, color="#dc2626", edgecolor="white", linewidth=1.2, zorder=3)
-        ax.annotate(f"  {district_name}", (lon, lat), fontsize=8.5, fontweight="bold", color="#dc2626")
+        ax.scatter(lon, lat, s=130, color="#A6431C", edgecolor="white", linewidth=1.2, zorder=3)
+        ax.annotate(f"  {district_name}", (lon, lat), fontsize=8.5, fontweight="bold", color="#A6431C")
 
     ax.set_xlabel("Longitude", fontsize=8)
     ax.set_ylabel("Latitude", fontsize=8)
-    ax.set_title(f"Relative Location - {district_name}", fontsize=11, fontweight="bold", color="#0f172a")
+    ax.set_title(f"Relative Location - {district_name}", fontsize=11, fontweight="bold", color="#16211E")
     ax.grid(True, linestyle="--", alpha=0.3)
     ax.tick_params(labelsize=7)
     fig.tight_layout()
@@ -646,12 +628,6 @@ def _pdf_location_map(district_name: str, coords: dict) -> io.BytesIO:
 
 
 def create_pdf_report(data: dict, ai_text: str = None) -> bytes:
-    """
-    Builds the executive PDF report: parameter summary, visual analytics
-    (bar chart, pie chart, location map - all rendered with matplotlib so
-    the PDF generator has no browser/Chrome dependency), commodity table,
-    and statistical validation metrics.
-    """
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
@@ -683,7 +659,6 @@ def create_pdf_report(data: dict, ai_text: str = None) -> bytes:
         pdf.cell(90, 6, str(val), border=1, ln=True)
     pdf.ln(6)
 
-    # --- 2. Visual Analytics: bar chart + pie chart side by side -----------------------------
     pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 8, "2. Visual Analytics", ln=True)
     commodities = data.get("Commodity_Breakdown", [])
@@ -699,14 +674,12 @@ def create_pdf_report(data: dict, ai_text: str = None) -> bytes:
         pdf.cell(190, 6, "No commodity data available for this region/window.", ln=True)
     pdf.ln(2)
 
-    # --- 3. Location Map ------------------------------------------------------------------
     pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 8, "3. Location Map", ln=True)
     map_img = _pdf_location_map(data["District"], DISTRICT_COORDS)
     pdf.image(map_img, x=45, w=110)
     pdf.ln(4)
 
-    # --- 4. Commodity breakdown table -------------------------------------------------------
     pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 8, "4. Crop & Export Fruit Disaggregated Loss", ln=True)
     pdf.set_font("Arial", "B", 9)
@@ -737,9 +710,6 @@ def create_pdf_report(data: dict, ai_text: str = None) -> bytes:
         for w in data["Data_Quality_Warnings"]:
             pdf.multi_cell(190, 5, f"- {w}")
 
-    # --- 7. Data Sources & Methodology -------------------------------------------------------
-    # Lets the reader trace every number back to an exact GEE collection ID,
-    # instead of just trusting an unsourced "satellite data" claim.
     pdf.add_page()
     pdf.set_font("Arial", "B", 12)
     pdf.cell(190, 8, "7. Data Sources & Methodology", ln=True)
@@ -758,13 +728,12 @@ def create_pdf_report(data: dict, ai_text: str = None) -> bytes:
         pdf.multi_cell(184, 5, f"Used for: {src['purpose']}")
         pdf.ln(1.5)
 
-    # --- 8. AI-Generated Recommendations (only if the user generated one in-app) -------------
     if ai_text:
         pdf.ln(4)
         pdf.set_font("Arial", "B", 12)
         pdf.cell(190, 8, "8. AI-Generated Recommendations & Precautions", ln=True)
         pdf.set_font("Arial", "I", 8)
-        pdf.multi_cell(190, 4.5, f"Generated by {GEMINI_MODEL} from the parameters in this report. "
+        pdf.multi_cell(190, 4.5, f"Generated by {GROQ_MODEL} (via Groq) from the parameters in this report. "
                                   f"Review before acting on it - this is a decision-support aid, not a substitute "
                                   f"for on-ground assessment.")
         pdf.ln(1)
@@ -784,17 +753,18 @@ st.markdown(
     """
     <div class="executive-header">
         <div>
-            <h1>🌾 Agricultural Flood SDSS</h1>
+            <h1>🌾 Sailaab — Agricultural Flood SDSS</h1>
             <p>Research-Grade Multi-Satellite Remote Sensing & Economic Analytics · 2010–2026</p>
         </div>
         <div class="live-chip"><span class="live-dot"></span> GEE Connected</div>
     </div>
+    <div class="contour-rule"></div>
     """,
     unsafe_allow_html=True,
 )
 
 # ----------------------------------------------------------------------------
-# Sidebar Control Panel (logic unchanged, labels lightly restyled)
+# Sidebar Control Panel
 # ----------------------------------------------------------------------------
 def render_sidebar():
     st.sidebar.markdown("### 🎛️ Analysis Controls")
@@ -910,8 +880,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ----------------------------------------------------------------------------
-# Trigger Analytics — now with a granular, step-by-step progress bar instead
-# of a single opaque spinner (backend computation itself is unchanged).
+# Trigger Analytics
 # ----------------------------------------------------------------------------
 if run_btn:
     with st.spinner(f"Extracting GEE satellite datasets for {selected_district} ({start_date} \u2192 {end_date})..."):
@@ -950,7 +919,6 @@ if data:
         unsafe_allow_html=True,
     )
 
-    # Hero summary strip — quick-glance headline numbers before the deep dive
     method = data["Statistical_Metrics"].get("Flood Detection Method", "Unavailable")
     conf_label, conf_bg, conf_fg, conf_border = confidence_from_method(method)
     st.markdown(
@@ -976,14 +944,10 @@ if data:
             unsafe_allow_html=True,
         )
 
-    # ==========================================================
-# TAB 1: DEEP DIVE & COMMODITY BREAKDOWN
-# ==========================================================
 with tab1:
     if data:
         st.markdown(f"#### 📌 Core Satellite & Agronomic Metrics — {curr_dist} ({curr_year})")
 
-        # ---- Group 1: Environmental / Physical indicators ----
         st.markdown(
             '<div class="section-label">🌱 Environmental &amp; Physical Indicators</div>',
             unsafe_allow_html=True,
@@ -1004,7 +968,6 @@ with tab1:
 
         st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-        # ---- Group 2: Economic impact indicators ----
         st.markdown(
             '<div class="section-label">💰 Economic Impact Indicators</div>',
             unsafe_allow_html=True,
@@ -1018,7 +981,6 @@ with tab1:
 
         st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
-        # ---- Group 3: Risk & confidence indicators ----
         st.markdown(
             '<div class="section-label">⚠️ Risk &amp; Statistical Confidence</div>',
             unsafe_allow_html=True,
@@ -1039,14 +1001,13 @@ with tab1:
 
         st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
-        # ---- Confidence card for detection method ----
         st.markdown(
             f"""
             <div class="confidence-card">
                 <div style="font-size:1.6rem;">🛰️</div>
                 <div>
-                    <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Flood Detection Method</div>
-                    <div style="font-size:1.05rem; font-weight:700; color:#0f172a;">{method}</div>
+                    <div style="font-size:0.78rem; color:#5B6B62; font-weight:600;">Flood Detection Method</div>
+                    <div style="font-size:1.05rem; font-weight:700; color:#16211E;">{method}</div>
                 </div>
                 <div style="margin-left:auto;">
                     <span class="confidence-pill" style="background:{conf_bg}; color:{conf_fg}; border:1px solid {conf_border};">{conf_label}</span>
@@ -1058,7 +1019,6 @@ with tab1:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # ---- Disaggregated commodity table ----
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
         st.markdown("#### 🌾 Commodity &amp; Export Fruit Disaggregated Loss")
         df_comm = pd.DataFrame(data["Commodity_Breakdown"])
@@ -1074,7 +1034,6 @@ with tab1:
             )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Graphical analytics (side-by-side) ----
         col_hbar, col_bar = st.columns(2)
 
         with col_hbar:
@@ -1087,15 +1046,15 @@ with tab1:
                 title=f"Financial Loss Ranking ($ USD) — {curr_dist}",
                 text_auto=".2s",
                 color="Financial Loss ($ USD)",
-                color_continuous_scale=["#bbf7d0", "#16a34a", "#14532d"],
+                color_continuous_scale=["#F0E4C8", "#C99A3E", "#7A5A17"],
             )
             fig_hbar.update_layout(
                 yaxis={"categoryorder": "total ascending"},
                 xaxis_title="Loss ($ USD)", yaxis_title="",
                 coloraxis_showscale=False,
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font={"family": "Inter", "color": "#334155"},
-                title_font={"size": 14, "color": "#0f172a"},
+                font={"family": "Inter", "color": "#4B564E"},
+                title_font={"size": 14, "color": "#16211E"},
                 margin=dict(l=10, r=10, t=45, b=10),
             )
             st.plotly_chart(fig_hbar, width="stretch")
@@ -1110,19 +1069,18 @@ with tab1:
                 color="Commodity",
                 title=f"Volume Loss (Metric Tons) — {curr_dist}",
                 text_auto=".2s",
-                color_discrete_sequence=["#0ea5e9", "#06b6d4", "#22c55e", "#84cc16", "#eab308", "#f97316"],
+                color_discrete_sequence=["#1B6E76", "#B3872F", "#5C6B2F", "#A6431C", "#4C7A54", "#6E8FA3", "#8A5E17"],
             )
             fig_bar.update_layout(
                 xaxis_title="", yaxis_title="Metric Tons", showlegend=False,
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font={"family": "Inter", "color": "#334155"},
-                title_font={"size": 14, "color": "#0f172a"},
+                font={"family": "Inter", "color": "#4B564E"},
+                title_font={"size": 14, "color": "#16211E"},
                 margin=dict(l=10, r=10, t=45, b=10),
             )
             st.plotly_chart(fig_bar, width="stretch")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Geospatial Map Card ----
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
         map_header_col, legend_col = st.columns([3, 1])
         with map_header_col:
@@ -1132,8 +1090,8 @@ with tab1:
             st.markdown(
                 """
                 <div style="padding-top:6px;">
-                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#2e7d32;"></span> Cropland Mask</div>
-                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#0288d1;"></span> Inundated Zone</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#5C6B2F;"></span> Cropland Mask</div>
+                    <div class="map-legend-row"><span class="map-legend-swatch" style="background:#1B6E76;"></span> Inundated Zone</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1174,14 +1132,7 @@ with tab1:
         st_folium(m, width="100%", height=500)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================================
     else:
-        # ------------------------------------------------------------------
-        # Landing state — shown before the first analysis is run.
-        # Designed so the page never looks "empty": hero intro, a 3-step
-        # guide, and greyed-out skeleton KPI/chart placeholders that mirror
-        # the exact layout the real dashboard will render into.
-        # ------------------------------------------------------------------
         st.markdown(
             """
             <div class="landing-hero">
@@ -1243,9 +1194,7 @@ with tab1:
             "👈 Configure your region and time window in the sidebar, then click "
             "<b>\"▶ Run Satellite Analysis\"</b> to replace this preview with live results.",
         )
-# ==========================================================
-# TAB 2: DISTRICT COMPARISON MODE
-# ==========================================================
+
 with tab2:
     st.markdown('<div class="ui-card">', unsafe_allow_html=True)
     st.markdown("#### ⚔️ Side-by-Side District Comparison")
@@ -1316,14 +1265,10 @@ with tab2:
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Graphical comparison (bar + pie) ----
         col_cmp_bar, col_cmp_pie = st.columns(2)
 
         with col_cmp_bar:
             st.markdown('<div class="ui-card">', unsafe_allow_html=True)
-            # Only comparable 0-100 scale metrics go in one grouped bar chart;
-            # $ / km² / ton values are left out here since their scale would
-            # dwarf the percentage metrics and make the chart unreadable.
             bar_metrics = [
                 ("Crop Damage (%)", "P3_Crop_Damage_Percent"),
                 ("Soil Moisture Sat. (%)", "P6_Soil_Moisture_Sat_Percent"),
@@ -1337,12 +1282,12 @@ with tab2:
             fig_cmp_bar = px.bar(
                 df_bar_cmp, x="Metric", y="Value", color="District", barmode="group",
                 title="Comparable Impact Metrics (0-100 scale)",
-                color_discrete_sequence=["#0ea5e9", "#16a34a"],
+                color_discrete_sequence=["#1B6E76", "#B3872F"],
             )
             fig_cmp_bar.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                font={"family": "Inter", "color": "#334155"},
-                title_font={"size": 14, "color": "#0f172a"},
+                font={"family": "Inter", "color": "#4B564E"},
+                title_font={"size": 14, "color": "#16211E"},
                 margin=dict(l=10, r=10, t=45, b=10), legend_title="",
             )
             st.plotly_chart(fig_cmp_bar, width="stretch")
@@ -1356,12 +1301,12 @@ with tab2:
                 fig_cmp_pie = px.pie(
                     names=[name_A, name_B], values=[loss_A, loss_B],
                     title="Financial Loss Share ($ USD)", hole=0.45,
-                    color_discrete_sequence=["#0ea5e9", "#16a34a"],
+                    color_discrete_sequence=["#1B6E76", "#B3872F"],
                 )
                 fig_cmp_pie.update_layout(
                     paper_bgcolor="rgba(0,0,0,0)",
-                    font={"family": "Inter", "color": "#334155"},
-                    title_font={"size": 14, "color": "#0f172a"},
+                    font={"family": "Inter", "color": "#4B564E"},
+                    title_font={"size": 14, "color": "#16211E"},
                     margin=dict(l=10, r=10, t=45, b=10),
                 )
                 fig_cmp_pie.update_traces(textinfo="percent+label")
@@ -1376,9 +1321,6 @@ with tab2:
     else:
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ==========================================================
-# TAB 3: HISTORICAL TREND & RECOVERY
-# ==========================================================
 with tab3:
     st.markdown('<div class="ui-card">', unsafe_allow_html=True)
     st.markdown(f"#### 📈 Historical Trajectory: {curr_dist}")
@@ -1414,17 +1356,17 @@ with tab3:
         fig_trend.add_trace(go.Scatter(
             x=df_trend["Year"], y=df_trend["Crop Damage Share (%)"],
             mode="lines+markers",
-            line=dict(color="#2563eb", width=3),
+            line=dict(color="#1B6E76", width=3),
             marker=dict(size=11, color=marker_colors, line=dict(width=1, color="#ffffff")),
-            fill="tozeroy", fillcolor="rgba(37,99,235,0.08)",
+            fill="tozeroy", fillcolor="rgba(27,110,118,0.08)",
             name="Crop Damage Share (%)",
         ))
         fig_trend.update_layout(
             title=f"Crop Damage Share Over Time ({curr_dist})",
             xaxis_title="Year", yaxis_title="Crop Damage Share (%)",
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font={"family": "Inter", "color": "#334155"},
-            title_font={"size": 14, "color": "#0f172a"},
+            font={"family": "Inter", "color": "#4B564E"},
+            title_font={"size": 14, "color": "#16211E"},
             margin=dict(l=10, r=10, t=45, b=10),
             showlegend=False,
         )
@@ -1450,35 +1392,26 @@ with tab3:
             )
     st.markdown('</div>', unsafe_allow_html=True)
 
-# ==========================================================
-# TAB 4: DIAGNOSTICS & PDF REPORT
-# ==========================================================
 with tab4:
     if data:
-        # ---- Section 1: Empirical Validation (full width, no longer squeezed into a column) ----
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
         st.markdown("#### \U0001F4CA Empirical Validation Index")
         df_stats = pd.DataFrame(
             list(data["Statistical_Metrics"].items()),
             columns=["Statistical Metric", "Observed Value"],
         )
-        # Statistical_Metrics mixes floats (e.g. Z-scores) and strings (e.g.
-        # "N/A", "-3.61 Sigma") in the same column. Force a uniform string
-        # dtype so PyArrow's Arrow-conversion for st.table doesn't try to
-        # infer a numeric column and choke on the string entries.
         df_stats["Observed Value"] = df_stats["Observed Value"].astype(str)
         st.table(df_stats)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Section 2: Data confidence (its own full-width card, not crammed beside stats) ----
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
         st.markdown(
             f"""
             <div class="confidence-card">
                 <div style="font-size:1.6rem;">\U0001F6F0\uFE0F</div>
                 <div>
-                    <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Overall Data Confidence</div>
-                    <div style="font-size:1.0rem; font-weight:700; color:#0f172a;">
+                    <div style="font-size:0.78rem; color:#5B6B62; font-weight:600;">Overall Data Confidence</div>
+                    <div style="font-size:1.0rem; font-weight:700; color:#16211E;">
                         {"No warnings raised during extraction" if not data.get("Data_Quality_Warnings") else f"{len(data['Data_Quality_Warnings'])} data-quality note(s) — see banner above"}
                     </div>
                 </div>
@@ -1491,7 +1424,6 @@ with tab4:
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # ---- Section 3: PDF Export - placed LAST, as the final action on this tab -------------
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
         st.markdown("#### \U0001F4C4 Export PDF Executive Summary")
         st.write(
@@ -1531,9 +1463,6 @@ with tab4:
     else:
         st.info("Run the analysis in the **Overview** tab first to unlock diagnostics and the PDF export for that district/year.")
 
-# ==========================================================
-# TAB 5: AI INSIGHTS (LLM-generated recommendations & precautions)
-# ==========================================================
 with tab5:
     if data:
         st.markdown('<div class="ui-card">', unsafe_allow_html=True)
@@ -1547,10 +1476,10 @@ with tab5:
         if not ai_is_configured():
             st.markdown(
                 '<div class="dq-warning">\u26A0\uFE0F AI Insights is not configured yet. Add '
-                '<code>GEMINI_API_KEY</code> (and optionally <code>GEMINI_MODEL</code>) '
-                'to your <code>.env</code> file to enable this tab — get a free key (no credit '
-                'card needed) at <a href="https://aistudio.google.com/apikey" target="_blank">'
-                'aistudio.google.com/apikey</a>. The rest of the dashboard '
+                '<code>GROQ_API_KEY</code> (and optionally <code>GROQ_MODEL</code>) '
+                'to your <code>.env</code> file to enable this tab — get a free key at '
+                '<a href="https://console.groq.com/keys" target="_blank">'
+                'console.groq.com/keys</a>. The rest of the dashboard '
                 'works fully without it.</div>',
                 unsafe_allow_html=True,
             )

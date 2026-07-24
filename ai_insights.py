@@ -1,127 +1,148 @@
 """
 ai_insights.py
 --------------
-Generates plain-language flood-recovery recommendations and precautions for
-future events, using the Groq API (Llama 3.3 70B - Fast & Free tier).
+LLM advisory layer for the Pakistan Agricultural Flood SDSS — powered by
+Groq (fast inference on open models like Llama 3.3), using Groq's
+OpenAI-compatible REST API directly via `requests` (no extra SDK needed).
 
-Design principle: the AI Insights feature is an ADD-ON, not a dependency.
-If GROQ_API_KEY isn't set, or the `groq` package isn't installed,
-or the API call fails for any reason, this module returns a clear status
-message instead of raising - the rest of the dashboard (which doesn't
-depend on this) keeps working normally.
+Takes the 10 computed satellite parameters (NOT raw imagery — just numbers)
+for a district/time-window and asks the model to produce a plain-language
+situation summary, immediate precautions, recovery steps, and longer-term
+prevention measures.
 
-Prepared by Ali Anus (Updated with Pakistan Cropping Calendar Rules)
+Public interface expected by app.py:
+    is_configured() -> bool
+    generate_ai_recommendations(data: dict) -> tuple[str | None, str]
+        Returns (ai_text, status). ai_text is None on failure; status holds
+        either "Success" or a human-readable error message.
+
+Requires GROQ_API_KEY in your .env file. Get a free key at:
+https://console.groq.com/keys
 """
 
 from __future__ import annotations
 
 import logging
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+import requests
+
+from config import GROQ_API_KEY, GROQ_MODEL
+
 logger = logging.getLogger("ai_insights")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = "llama-3.3-70b-versatile"
-
-try:
-    from groq import Groq
-    _GROQ_IMPORT_ERROR = None
-except ImportError as exc:  # pragma: no cover
-    Groq = None
-    _GROQ_IMPORT_ERROR = str(exc)
-
-
-SYSTEM_PROMPT = (
-    "You are an agricultural disaster-recovery advisor writing for district-level "
-    "government officials and farmers in Pakistan. Given satellite-derived flood and "
-    "crop-damage statistics for one district and time window, write a concise, "
-    "practical advisory. Do not invent numbers beyond what is given.\n\n"
-    "CRITICAL PAKISTAN CROPPING CALENDAR RULES:\n"
-    "1. Kharif Season (May to October): Active standing crops are Rice, Cotton, Sugarcane, and Maize. "
-    "WHEAT IS NEVER A STANDING CROP IN JULY/AUGUST/SEPTEMBER (it is harvested by April). Do not mention Wheat for summer/monsoon floods.\n"
-    "2. Rabi Season (November to April): Active standing crops are Wheat, Gram, Mustard, and Barley.\n"
-    "3. Only refer to the crops explicitly listed in the provided 'Top affected commodities' data or valid for the analysis window.\n\n"
-    "Structure your response in exactly these four short sections, using plain language (no jargon):\n"
-    "1. Situation Summary (2-3 sentences)\n"
-    "2. Immediate Precautions (3-5 bullet points, actionable this season)\n"
-    "3. Recovery Recommendations (3-5 bullet points, for the next 3-6 months)\n"
-    "4. Future Prevention (2-4 bullet points, structural/long-term measures)\n\n"
-    "Keep the entire response under 300 words. Do not add a preamble or disclaimer - "
-    "start directly with '1. Situation Summary'."
-)
-
-
-def _build_user_prompt(data: dict) -> str:
-    """Turns the computed 10-parameter result into a compact fact sheet for the model."""
-    commodities = data.get("Commodity_Breakdown") or []
-    commodities_text = (
-        ", ".join(
-            f"{c['Commodity']} (${c['Financial Loss ($ USD)']:,.0f})"
-            for c in commodities[:4]
-        )
-        if commodities
-        else "Not specifically itemized (general cropland)"
-    )
-
-    return (
-        f"District: {data.get('District')}\n"
-        f"Analysis window: {data.get('Start_Date')} to {data.get('End_Date')}\n"
-        f"Flood severity (auto-classified): {data.get('Flood_Severity')}\n"
-        f"Total cropland: {data.get('P1_Total_Cropland_SqKm')} sq km\n"
-        f"Flooded cropland: {data.get('P2_Flooded_Cropland_SqKm')} sq km\n"
-        f"Crop damage share: {data.get('P3_Crop_Damage_Percent')}%\n"
-        f"NDVI health drop: {data.get('P4_NDVI_Health_Drop')}\n"
-        f"Rainfall (CHIRPS): {data.get('P5_Rainfall_CHIRPS_mm')} mm\n"
-        f"Soil moisture saturation: {data.get('P6_Soil_Moisture_Sat_Percent')}%\n"
-        f"Average elevation: {data.get('P7_Elevation_Avg_Meters')} m\n"
-        f"Estimated yield loss: {data.get('P8_Crop_Yield_Loss_Tons')} metric tons\n"
-        f"Estimated financial loss: ${data.get('P9_Financial_Loss_USD')}\n"
-        f"Vulnerability score: {data.get('P10_Vulnerability_Score')} / 100\n"
-        f"Top affected commodities: {commodities_text}"
-    )
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
 
 def is_configured() -> bool:
-    """True only if both the package and an API key are available."""
-    return Groq is not None and bool(GROQ_API_KEY)
+    """True only if an API key is present in .env."""
+    return bool(GROQ_API_KEY)
+
+
+def _build_prompt(data: dict) -> str:
+    commodities = data.get("Commodity_Breakdown", [])
+    commodity_lines = "\n".join(
+        f"- {c['Commodity']}: {c['Yield Loss (Metric Tons)']:,} tons lost, "
+        f"${c['Financial Loss ($ USD)']:,.0f} financial loss"
+        for c in commodities
+    ) or "- No commodity data available"
+
+    stats = data.get("Statistical_Metrics", {})
+
+    return f"""You are an agricultural disaster-recovery advisor for Pakistan.
+Based ONLY on the satellite-derived data below for {data.get('District')}
+({data.get('Start_Date')} to {data.get('End_Date')}), write a concise,
+plain-language advisory for local administrators and farmers. Do not invent
+numbers not given below.
+
+FLOOD SEVERITY: {data.get('Flood_Severity')}
+Total Cropland: {data.get('P1_Total_Cropland_SqKm')} sq km
+Flooded Cropland: {data.get('P2_Flooded_Cropland_SqKm')} sq km
+Crop Damage Share: {data.get('P3_Crop_Damage_Percent')}%
+NDVI Vegetation Health Drop: {data.get('P4_NDVI_Health_Drop')}
+Monsoon Rainfall (CHIRPS): {data.get('P5_Rainfall_CHIRPS_mm')} mm
+Soil Moisture Saturation: {data.get('P6_Soil_Moisture_Sat_Percent')}%
+Average Elevation: {data.get('P7_Elevation_Avg_Meters')} m
+Aggregate Yield Loss: {data.get('P8_Crop_Yield_Loss_Tons')} metric tons
+Estimated Financial Loss: ${data.get('P9_Financial_Loss_USD'):,.0f}
+Vulnerability Score: {data.get('P10_Vulnerability_Score')}/100
+Flood Detection Method: {stats.get('Flood Detection Method')}
+Rainfall Z-Score vs 20-yr norm: {stats.get('Monsoon Rain Z-Score')}
+
+Commodity breakdown:
+{commodity_lines}
+
+Structure your response with these exact section headers:
+1. Situation Summary
+2. Immediate Precautions
+3. Recovery Steps
+4. Longer-Term Prevention
+
+Keep it under 350 words total. Be specific to the data given, not generic."""
 
 
 def generate_ai_recommendations(data: dict) -> tuple:
     """
-    Returns (recommendation_text | None, status_message).
-    Safe to cache with Streamlit.
+    Calls Groq's chat completions endpoint with the computed parameters and
+    returns (ai_text, status). On any failure, ai_text is None and status
+    contains a friendly reason — app.py displays this via st.error() so the
+    rest of the dashboard keeps working even if this call fails.
     """
-    if Groq is None:
-        return None, (
-            "The 'groq' package is not installed. Run: pip install groq"
-        )
     if not GROQ_API_KEY:
-        return None, (
-            "GROQ_API_KEY is not set in your .env file. Get a free key "
-            "at https://console.groq.com - AI Insights is optional, the rest of "
-            "the dashboard works fully without it."
-        )
+        return None, "GROQ_API_KEY is not set in your .env file."
+
+    prompt = _build_prompt(data)
 
     try:
-        client = Groq(api_key=GROQ_API_KEY)
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": _build_user_prompt(data)},
-            ],
-            model=GROQ_MODEL,
-            max_tokens=700,
-            temperature=0.3,  # Lower temperature for more accurate & factual output
+        response = requests.post(
+            GROQ_ENDPOINT,
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": GROQ_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.4,
+                "max_tokens": 600,
+            },
+            timeout=30,
         )
-        
-        recommendation = (chat_completion.choices[0].message.content or "").strip()
-        if not recommendation:
-            return None, "The AI model returned an empty response. Try again."
-            
-        return recommendation, "Success"
-        
+    except requests.exceptions.Timeout:
+        return None, "Groq API request timed out. Check your internet connection and try again."
+    except requests.exceptions.ConnectionError:
+        return None, "Could not reach Groq's API. Check your internet connection and try again."
     except Exception as exc:
-        logger.error("AI recommendation generation failed: %s", exc)
-        return None, f"AI Insights request failed: {exc}"
+        logger.error("Groq request failed: %s", exc)
+        return None, f"AI recommendation generation failed: {exc}"
+
+    if response.status_code == 401:
+        return None, (
+            "Your GROQ_API_KEY appears to be invalid or expired. Get a new "
+            "one at https://console.groq.com/keys"
+        )
+    if response.status_code == 404:
+        return None, (
+            f"Model '{GROQ_MODEL}' was not found or has been retired. Check "
+            "https://console.groq.com/docs/models for a current model name "
+            "and update GROQ_MODEL in your .env file."
+        )
+    if response.status_code == 429:
+        return None, "Groq rate limit reached. Wait a moment and try again."
+    if response.status_code != 200:
+        try:
+            err_detail = response.json().get("error", {}).get("message", response.text)
+        except Exception:
+            err_detail = response.text
+        return None, f"Groq API error ({response.status_code}): {err_detail}"
+
+    try:
+        payload = response.json()
+        text = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, ValueError) as exc:
+        logger.error("Unexpected Groq response shape: %s", exc)
+        return None, "Groq returned an unexpected response format. Try again."
+
+    if not text or not text.strip():
+        return None, "Groq returned an empty response. Try again."
+
+    return text.strip(), "Success"

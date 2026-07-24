@@ -15,6 +15,13 @@ Key enhancements:
     district agricultural zones (Cotton-Rice, Wheat-Cotton-Mango, KPK Horticulture).
   * Cloud-Ready Auth: Uses a Service Account (via Streamlit secrets) when deployed,
     falling back to local OAuth credentials when running on your own machine.
+
+FIX (this revision): init_gee() previously swallowed the *real* auth error and
+the UI only ever showed one generic message ("Could not connect to Google
+Earth Engine..."), so it was impossible to tell WHY it failed (missing
+GEE_PROJECT_ID? missing/broken service account? local machine never ran
+`earthengine authenticate`? wrong project not registered for EE?). init_gee()
+now returns (bool, detail_message) so app.py can show the *specific* cause.
 """
 
 from __future__ import annotations
@@ -37,8 +44,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger("gee_engine")
 
 
-def _get_project_id() -> str:
-    """Resolve GEE_PROJECT_ID from Streamlit secrets first (cloud), then .env (local)."""
+def _get_project_id():
+    """Resolve GEE_PROJECT_ID from Streamlit secrets first (cloud), then .env (local).
+    Returns None instead of raising, so the caller can produce a friendly,
+    on-screen diagnostic instead of crashing the whole app at import time."""
     if _HAS_STREAMLIT:
         try:
             if "GEE_PROJECT_ID" in st.secrets:
@@ -51,11 +60,10 @@ def _get_project_id() -> str:
 
 
 PROJECT_ID = _get_project_id()
-if not PROJECT_ID:
-    raise EnvironmentError(
-        "GEE_PROJECT_ID is not set. Set it in your .env file (local) or in "
-        "Streamlit secrets as GEE_PROJECT_ID / gee_service_account.project_id (cloud)."
-    )
+# NOTE: we no longer raise EnvironmentError here. Raising at import time means
+# `streamlit run app.py` crashes with a raw Python traceback in the terminal
+# instead of a clean in-app message. init_gee() below checks PROJECT_ID and
+# reports a friendly, specific error inside the app instead.
 
 SENTINEL1_AVAILABLE_FROM_YEAR = 2014
 
@@ -115,19 +123,46 @@ def get_district_crop_profile(district_name: str) -> dict:
     return DISTRICT_CROP_PROFILES["DEFAULT_NATIONAL"]
 
 
-def init_gee() -> bool:
+def init_gee() -> tuple:
     """
-    Cloud-first GEE auth:
-      1. If Streamlit secrets contain [gee_service_account], authenticate with
-         that service account (works on Streamlit Cloud / any headless server).
-      2. Otherwise fall back to local OAuth credentials (works only on a machine
-         where `earthengine authenticate` has already been run).
+    Cloud-first GEE auth. Returns (success: bool, detail: str) instead of a
+    bare bool, so the UI can tell the user EXACTLY what went wrong instead of
+    a single generic "could not connect" message.
+
+    Order of attempts:
+      1. Streamlit secrets [gee_service_account] -> service-account auth
+         (works headless on Streamlit Cloud / any server).
+      2. Local OAuth credentials -> `ee.Initialize(project=PROJECT_ID)`
+         (only works if `earthengine authenticate` has already been run on
+         THIS machine, or ADC/gcloud credentials are set up).
     """
+    if not PROJECT_ID:
+        return False, (
+            "GEE_PROJECT_ID is not set. Add it to your local .env file "
+            "(GEE_PROJECT_ID=your-gcp-project-id), or, if deployed on "
+            "Streamlit Cloud, add it under Settings -> Secrets as "
+            "GEE_PROJECT_ID = \"your-gcp-project-id\" (or inside a "
+            "[gee_service_account] block as project_id)."
+        )
+
     # 1. Service account (deployed / cloud)
     if _HAS_STREAMLIT:
         try:
-            if "gee_service_account" in st.secrets:
+            has_secret = "gee_service_account" in st.secrets
+        except Exception:
+            has_secret = False
+
+        if has_secret:
+            try:
                 key_dict = dict(st.secrets["gee_service_account"])
+                required = ["client_email", "private_key", "project_id"]
+                missing = [k for k in required if k not in key_dict]
+                if missing:
+                    return False, (
+                        f"Your [gee_service_account] secret is missing required "
+                        f"field(s): {', '.join(missing)}. Copy the full JSON key "
+                        f"downloaded from the GCP service account into secrets.toml."
+                    )
                 credentials = ee.ServiceAccountCredentials(
                     key_dict["client_email"], key_data=json.dumps(key_dict)
                 )
@@ -135,19 +170,38 @@ def init_gee() -> bool:
                 logger.info(
                     "GEE initialized via service account '%s'.", key_dict["client_email"]
                 )
-                return True
-        except Exception as exc:
-            logger.error("GEE service-account initialization failed: %s", exc)
-            return False
+                return True, "Connected via service account."
+            except Exception as exc:
+                logger.error("GEE service-account initialization failed: %s", exc)
+                return False, (
+                    "Service-account authentication failed: "
+                    f"{exc}. Common causes: (a) the Earth Engine API isn't "
+                    "enabled for this GCP project, (b) this service account "
+                    "hasn't been registered/approved for Earth Engine access "
+                    "at https://signup.earthengine.google.com, or (c) the "
+                    "private_key in secrets.toml has broken newline "
+                    "formatting (it must keep literal \\n or a real "
+                    "multi-line triple-quoted string)."
+                )
 
     # 2. Local OAuth fallback
     try:
         ee.Initialize(project=PROJECT_ID)
         logger.info("GEE initialized successfully for project '%s'.", PROJECT_ID)
-        return True
+        return True, "Connected via local credentials."
     except Exception as exc:
         logger.error("GEE initialization failed: %s", exc)
-        return False
+        return False, (
+            f"Local Earth Engine authentication failed: {exc}. If you're "
+            "running this on your own machine and have never done so, open "
+            "a terminal and run:\n\n"
+            "    earthengine authenticate\n\n"
+            "then reload the app. If you already ran that once, your token "
+            "may have expired or your Google account may not have Earth "
+            "Engine access approved for project "
+            f"'{PROJECT_ID}' — check https://code.earthengine.google.com "
+            "with the same account to confirm access."
+        )
 
 
 @dataclass
@@ -286,8 +340,8 @@ def get_district_10_parameters(
 
     cropland_tile = flood_tile = None
     try:
-        cropland_tile = cropland.selfMask().getMapId({"palette": ["2e7d32"]})["tile_fetcher"].url_format
-        flood_tile = flood_water.selfMask().getMapId({"palette": ["0288d1"]})["tile_fetcher"].url_format
+        cropland_tile = cropland.selfMask().getMapId({"palette": ["5C6B2F"]})["tile_fetcher"].url_format
+        flood_tile = flood_water.selfMask().getMapId({"palette": ["1B6E76"]})["tile_fetcher"].url_format
     except Exception as exc:
         dq.add(f"Tile generation failed: {exc}")
 
