@@ -17,8 +17,8 @@ streamlit-folium>=0.23
 # PDF report generation
 fpdf2>=2.8
 
-# AI Insights (Gemini)
-google-genai>=1.0
+# AI Insights (Groq)
+groq>=0.9.0
 
 # Testing (optional, for tests/)
 pytest>=8.0
