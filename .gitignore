@@ -1,0 +1,11 @@
+# Sensitive keys and secrets
+*.json
+.env
+secrets.toml
+.streamlit/secrets.toml
+
+# Python cache & temp files
+__pycache__/
+*.pyc
+.vscode/
+.DS_Store

@@ -1,0 +1,24 @@
+# Core app
+streamlit>=1.38
+python-dotenv>=1.0
+
+# Google Earth Engine
+earthengine-api>=1.0
+
+# Data & charts
+pandas>=2.2
+plotly>=5.22
+matplotlib>=3.8
+
+# Maps
+folium>=0.17
+streamlit-folium>=0.23
+
+# PDF report generation
+fpdf2>=2.8
+
+# AI Insights (Gemini)
+google-genai>=1.0
+
+# Testing (optional, for tests/)
+pytest>=8.0
