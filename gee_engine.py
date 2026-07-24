@@ -13,24 +13,48 @@ Key enhancements:
     instead of synthetic scalar formulas.
   * Agro-Ecological Crop Profiling: Dynamically allocates commodity weights based on
     district agricultural zones (Cotton-Rice, Wheat-Cotton-Mango, KPK Horticulture).
+  * Cloud-Ready Auth: Uses a Service Account (via Streamlit secrets) when deployed,
+    falling back to local OAuth credentials when running on your own machine.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import dataclass, field
 import ee
 from dotenv import load_dotenv
 
+try:
+    import streamlit as st
+    _HAS_STREAMLIT = True
+except ImportError:
+    _HAS_STREAMLIT = False
+
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("gee_engine")
 
-PROJECT_ID = os.getenv("GEE_PROJECT_ID")
+
+def _get_project_id() -> str:
+    """Resolve GEE_PROJECT_ID from Streamlit secrets first (cloud), then .env (local)."""
+    if _HAS_STREAMLIT:
+        try:
+            if "GEE_PROJECT_ID" in st.secrets:
+                return st.secrets["GEE_PROJECT_ID"]
+            if "gee_service_account" in st.secrets and "project_id" in st.secrets["gee_service_account"]:
+                return st.secrets["gee_service_account"]["project_id"]
+        except Exception:
+            pass
+    return os.getenv("GEE_PROJECT_ID")
+
+
+PROJECT_ID = _get_project_id()
 if not PROJECT_ID:
     raise EnvironmentError(
-        "GEE_PROJECT_ID is not set in your .env file. Please configure GEE_PROJECT_ID."
+        "GEE_PROJECT_ID is not set. Set it in your .env file (local) or in "
+        "Streamlit secrets as GEE_PROJECT_ID / gee_service_account.project_id (cloud)."
     )
 
 SENTINEL1_AVAILABLE_FROM_YEAR = 2014
@@ -92,6 +116,31 @@ def get_district_crop_profile(district_name: str) -> dict:
 
 
 def init_gee() -> bool:
+    """
+    Cloud-first GEE auth:
+      1. If Streamlit secrets contain [gee_service_account], authenticate with
+         that service account (works on Streamlit Cloud / any headless server).
+      2. Otherwise fall back to local OAuth credentials (works only on a machine
+         where `earthengine authenticate` has already been run).
+    """
+    # 1. Service account (deployed / cloud)
+    if _HAS_STREAMLIT:
+        try:
+            if "gee_service_account" in st.secrets:
+                key_dict = dict(st.secrets["gee_service_account"])
+                credentials = ee.ServiceAccountCredentials(
+                    key_dict["client_email"], key_data=json.dumps(key_dict)
+                )
+                ee.Initialize(credentials, project=key_dict.get("project_id", PROJECT_ID))
+                logger.info(
+                    "GEE initialized via service account '%s'.", key_dict["client_email"]
+                )
+                return True
+        except Exception as exc:
+            logger.error("GEE service-account initialization failed: %s", exc)
+            return False
+
+    # 2. Local OAuth fallback
     try:
         ee.Initialize(project=PROJECT_ID)
         logger.info("GEE initialized successfully for project '%s'.", PROJECT_ID)
@@ -289,10 +338,10 @@ def get_district_10_parameters(
             reducer=ee.Reducer.combine(ee.Reducer.mean(), ee.Reducer.stdDev(), sharedInputs=True),
             geometry=region, scale=5000, maxPixels=1e13
         ).getInfo()
-        
+
         hist_mean = hist_stats.get("precipitation_mean", 150.0)
         hist_std = hist_stats.get("precipitation_stdDev", 50.0)
-        
+
         if rainfall_mm is not None and hist_std > 0:
             z_score_rain = round((rainfall_mm - hist_mean) / hist_std, 2)
     except Exception as exc:
@@ -333,7 +382,7 @@ def get_district_10_parameters(
         crop_fin_loss = round(crop_yield_loss * cfg["price_per_ton"], 2)
         total_yield_loss_tons += crop_yield_loss
         total_financial_usd += crop_fin_loss
-        
+
         commodity_breakdown.append({
             "Commodity": name,
             "Yield Loss (Metric Tons)": crop_yield_loss,
